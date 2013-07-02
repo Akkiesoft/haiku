@@ -4,6 +4,8 @@ require 'rss'
 
 Plugin.create(:mikutter_rss) do
 
+  UserConfig[:rss_str]||="%t%n%n%d%n%n%l"
+  
   def reload
     #更新を行う
     #ただし これだと複数のRSSが別々で並ぶので，完全な時系列にならなく見にくい可能性がある
@@ -20,10 +22,13 @@ Plugin.create(:mikutter_rss) do
         n=rss.items.size
         i=0
         while i<n do
-          title=rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"\n")
-          description=rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"\n")
+          #文章を整形
+          #フォーマットはユーザーが設定できる
+          title=rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"")
+          description=rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"")
           link=rss.items[n-i-1].link
-          timeline(:mikutter_rss) << Message.new(:message => "#{title}\n#{description}\n#{link}", :system => true)
+          str=UserConfig[:rss_str].gsub("%t",title).gsub("%d",description).gsub("%l",link).gsub("%n","\n")
+          timeline(:mikutter_rss) << Message.new(:message => str, :system => true)
           i+=1
         end
       end
@@ -59,6 +64,7 @@ Plugin.create(:mikutter_rss) do
   settings "mikutter rss" do
     boolean('起動時に更新する', :rss_exec)
     boolean('1分毎に自動更新を行う', :rss_auto)
+    input("表示文字列のフォーマット", :rss_str)
     multi "RSS URL", :rss_url
   end
   
