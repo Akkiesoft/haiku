@@ -24,8 +24,12 @@ Plugin.create(:mikutter_rss) do
         while i<n do
           #文章を整形
           #フォーマットはユーザーが設定できる
-          title=rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"")
-          description=rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"")
+          title=rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "")
+          description=rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "")
+          if(UserConfig[:rss_rm_n])
+            title=title.gsub(/\n+/,"")
+            description=description.gsub(/\n+/,"")
+          end
           link=rss.items[n-i-1].link
           str=UserConfig[:rss_str].gsub("%t",title).gsub("%d",description).gsub("%l",link).gsub("%n","\n")
           timeline(:mikutter_rss) << Message.new(:message => str, :system => true)
@@ -64,6 +68,7 @@ Plugin.create(:mikutter_rss) do
   settings "mikutter rss" do
     boolean('起動時に更新する', :rss_exec)
     boolean('1分毎に自動更新を行う', :rss_auto)
+    boolean('タイトルと説明から改行を消す', :rss_rm_n)
     input("表示文字列のフォーマット", :rss_str)
     multi "RSS URL", :rss_url
   end
