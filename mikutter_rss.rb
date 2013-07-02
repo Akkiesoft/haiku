@@ -14,6 +14,7 @@ Plugin.create(:mikutter_rss) do
       begin
         rss = RSS::Parser.parse(url,true)
       rescue
+        timeline(:mikutter_rss) << Message.new(:message => "RSSのパースに失敗しました\n#{url}", :system => true)
       else
         #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
         #汚い
