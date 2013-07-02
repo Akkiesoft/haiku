@@ -37,6 +37,7 @@ Plugin.create(:mikutter_rss) do
   }
   
   #1分に1度 自動で更新
+  #理由はわからないけどなんか不具合があるっぽい 
   on_period do
     if(UserConfig[:rss_auto])
       reload
