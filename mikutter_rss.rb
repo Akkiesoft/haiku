@@ -19,8 +19,11 @@ Plugin.create(:mikutter_rss) do
         #汚い
         n=rss.items.size
         i=0
-        while i<n do 
-          timeline(:mikutter_rss) << Message.new(:message => "#{rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].link}", :system => true)
+        while i<n do
+          title=rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"\n")
+          description=rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "").gsub(/\n+/,"\n")
+          link=rss.items[n-i-1].link
+          timeline(:mikutter_rss) << Message.new(:message => "#{title}\n#{description}\n#{link}", :system => true)
           i+=1
         end
       end
