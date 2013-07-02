@@ -23,7 +23,7 @@ Plugin.create(:mikutter_rss) do
   
   btn = Gtk::Button.new('更新')
   
-  tab(:mikutter_rss, '') do
+  tab(:mikutter_rss, 'RSSリーダー') do
     set_icon File.expand_path(File.join(File.dirname(__FILE__), 'target.png'))
     shrink
     nativewidget Gtk::HBox.new(false, 0).closeup(btn)
