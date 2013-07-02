@@ -10,13 +10,19 @@ Plugin.create(:mikutter_rss) do
     timeline(:mikutter_rss).clear
     (UserConfig[:rss_url]|| []).select{|m|!m.empty?}.each do |url|
       rss = RSS::Parser.parse(url)
-      rss.items.each{|item|
-        timeline(:mikutter_rss) << Message.new(:message => "#{item.title.gsub(/<\/?[^>]*>/, "")}\n#{item.description.gsub(/<\/?[^>]*>/, "")}\n#{item.link}", :system => true)
-      }
+      #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
+      #汚い
+      n=rss.items.size
+      i=0
+      while i<n do 
+        timeline(:mikutter_rss) << Message.new(:message => "#{rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].link}", :system => true)
+        i+=1
+      end
     end
   end
-
+  
   btn = Gtk::Button.new('更新')
+  
   tab(:mikutter_rss, '') do
     set_icon File.expand_path(File.join(File.dirname(__FILE__), 'target.png'))
     shrink
@@ -40,5 +46,5 @@ Plugin.create(:mikutter_rss) do
   settings "mikutter rss" do
     multi "RSS URL", :rss_url
   end
-
+  
 end
