@@ -1,0 +1,5 @@
+mikutter rss plugin made by yukkuri_sinai
+
+1 mikutterにRSSリーダータブを作るプラグインです
+2 購読するRSSのURLを設定から追加すると1分に1度自動で取得してきます
+3 更新ボタンを押すことでも取得できます
