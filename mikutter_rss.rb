@@ -40,6 +40,7 @@ Plugin.create(:mikutter_rss) do
   on_period do
     if(UserConfig[:rss_auto])
       reload
+    end
   end
   
   reload
