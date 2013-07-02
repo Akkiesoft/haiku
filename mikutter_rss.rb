@@ -31,10 +31,10 @@ Plugin.create(:mikutter_rss) do
   }
   
   #1分に1度 自動で更新
-  def onperiod(watch)
+  on_period do
     reload
   end
-
+  
   reload
   
   settings "mikutter rss" do
