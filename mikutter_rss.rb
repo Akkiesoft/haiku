@@ -9,14 +9,20 @@ Plugin.create(:mikutter_rss) do
     #ただし これだと複数のRSSが別々で並ぶので，完全な時系列にならなく見にくい可能性がある
     timeline(:mikutter_rss).clear
     (UserConfig[:rss_url]|| []).select{|m|!m.empty?}.each do |url|
-      rss = RSS::Parser.parse(url)
-      #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
-      #汚い
-      n=rss.items.size
-      i=0
-      while i<n do 
-        timeline(:mikutter_rss) << Message.new(:message => "#{rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].link}", :system => true)
-        i+=1
+      #パースに失敗する場合がある 失敗した場合は例外引っ掛けてスルー
+      #はてなハイクで確認
+      begin
+        rss = RSS::Parser.parse(url,true)
+      rescue
+      else
+        #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
+        #汚い
+        n=rss.items.size
+        i=0
+        while i<n do 
+          timeline(:mikutter_rss) << Message.new(:message => "#{rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "")}\n#{rss.items[n-i-1].link}", :system => true)
+          i+=1
+        end
       end
     end
   end
