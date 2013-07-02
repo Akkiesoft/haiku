@@ -44,9 +44,12 @@ Plugin.create(:mikutter_rss) do
     end
   end
   
-  reload
+  if(UserConfig[:rss_exec])
+    reload
+  end
   
   settings "mikutter rss" do
+    boolean('起動時に更新する', :rss_exec)
     boolean('1分毎に自動更新を行う', :rss_auto)
     multi "RSS URL", :rss_url
   end
