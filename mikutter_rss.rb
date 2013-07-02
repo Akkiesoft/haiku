@@ -10,7 +10,6 @@ Plugin.create(:mikutter_rss) do
     timeline(:mikutter_rss).clear
     (UserConfig[:rss_url]|| []).select{|m|!m.empty?}.each do |url|
       #パースに失敗する場合がある 失敗した場合は例外引っ掛けてスルー
-      #はてなハイクで確認
       begin
         rss = RSS::Parser.parse(url,true)
       rescue
@@ -44,7 +43,6 @@ Plugin.create(:mikutter_rss) do
   }
   
   #1分に1度 自動で更新
-  #理由はわからないけどなんか不具合があるっぽい 
   on_period do
     if(UserConfig[:rss_auto])
       reload
