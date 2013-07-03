@@ -19,7 +19,7 @@ Plugin.create(:mikutter_rss) do
         rss = RSS::Parser.parse(url,true)
       rescue
         #例外の場合はエラーメッセージを流す
-        timeline(:mikutter_rss) << Message.new(:message => "RSSのパースに失敗しました\n#{url}", :system => true, :user => user, :createdat => created)
+        timeline(:mikutter_rss) << Message.new(:message => "RSSのパースに失敗しました\n#{url}", :system => true, :user => user)
       else
         #逆順にTLに入ってしまうので後ろ側からTLに挿入
         #汚い 綺麗に書けないかな(eachの逆順みたいなのないかな)
