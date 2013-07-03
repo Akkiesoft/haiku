@@ -9,34 +9,41 @@ Plugin.create(:mikutter_rss) do
   #Messageを作るときにsystemをtrue以外にすると落ちる
   #user指定したいんだけど
   def reload
+    #User作ってるけどまだ反映されない 何故？
     user= User.new(:id => 1,:idname => "RSS_reader",:name => "RSSリーダー", :profile_image_url => "target.png")
+    
     #更新を行う
     #ただし これだと複数のRSSが別々で並ぶので，完全な時系列にならなく見にくい可能性がある
     timeline(:mikutter_rss).clear
     (UserConfig[:rss_url]|| []).select{|m|!m.empty?}.each do |url|
-      #パースに失敗する場合がある 失敗した場合は例外引っ掛けてスルー
+      #パースに失敗する場合があるので例外
       begin
         rss = RSS::Parser.parse(url,true)
       rescue
+        #例外の場合はエラーメッセージを流す
         timeline(:mikutter_rss) << Message.new(:message => "RSSのパースに失敗しました\n#{url}", :system => true, :user => user, :createdat => Time.now)
       else
-        #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
-        #汚い
-        n=rss.items.size
-        i=0
-        while i<n do
-          #文章を整形
-          #フォーマットはユーザーが設定できる
-          title=rss.items[n-i-1].title.gsub(/<\/?[^>]*>/, "")
-          description=rss.items[n-i-1].description.gsub(/<\/?[^>]*>/, "")
+        #逆順にTLに入ってしまうので後ろ側からTLに挿入
+        #汚い 綺麗に書けないかな(eachの逆順みたいなのないかな)
+        i=rss.items.size
+        while 0<=i do
+          #各要素を引っ張ってくる
+          title=rss.items[i].title.gsub(/<\/?[^>]*>/, "")
+          description=rss.items[i].description.gsub(/<\/?[^>]*>/, "")
+          link=rss.items[i].link
+
+          #改行を消す設定
           if(UserConfig[:rss_rm_n])
             title=title.gsub(/\n+/,"")
             description=description.gsub(/\n+/,"")
           end
-          link=rss.items[n-i-1].link
+          
+          #フォーマットはユーザーが設定できる
           str=UserConfig[:rss_str].gsub("%t",title).gsub("%d",description).gsub("%l",link).gsub("%n","\n")
+          
+          #実際にtimelineにMessageを流す
           timeline(:mikutter_rss) << Message.new(:message => str, :system => true, :user => user, :createdat => Time.now)
-          i+=1
+          i-=1
         end
       end
     end
