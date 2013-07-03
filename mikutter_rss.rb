@@ -6,8 +6,6 @@ Plugin.create(:mikutter_rss) do
 
   UserConfig[:rss_str]||="%t%n%n%d%n%n%l"
   
-  #Messageを作るときにsystemをtrue以外にすると落ちる
-  #user指定したいんだけど
   def reload
     #User作ってるけどまだ反映されない 何故？
     user= User.new(:id => 1,:idname => "RSS_reader",:name => "RSSリーダー", :profile_image_url => "target.png")
@@ -42,6 +40,8 @@ Plugin.create(:mikutter_rss) do
           str=UserConfig[:rss_str].gsub("%t",title).gsub("%d",description).gsub("%l",link).gsub("%n","\n")
           
           #実際にtimelineにMessageを流す
+          #systemがtrue以外だと落ちる
+          #userが反映されない(mikutter_botの投稿になる)
           timeline(:mikutter_rss) << Message.new(:message => str, :system => true, :user => user, :createdat => Time.now)
           i-=1
         end
