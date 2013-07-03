@@ -25,12 +25,12 @@ Plugin.create(:mikutter_rss) do
       else
         #逆順にTLに入ってしまうので後ろ側からTLに挿入
         #汚い 綺麗に書けないかな(eachの逆順みたいなのないかな)
-        i=rss.items.size
+        i=rss.items.size-1
         while 0<=i do
           #各要素を引っ張ってくる
           title=rss.items[i].title.gsub(/<\/?[^>]*>/, "")
           description=rss.items[i].description.gsub(/<\/?[^>]*>/, "")
-          link=rss.items[i].link
+          link=rss.items[oi].link
 
           #改行を消す設定
           if(UserConfig[:rss_rm_n])
