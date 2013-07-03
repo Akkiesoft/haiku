@@ -1,13 +1,14 @@
-mikutter rss plugin made by yukkuri_sinai
+mikutter hatena haiku plugin
+by @Akkiesoft
 
-mikutterにRSSリーダータブを作るプラグインです
+mikutterにはてなハイクリーダータブを作るプラグインです
 
 タブ上部の更新ボタンを押すことで更新できます
 起動時に更新することや，や自動更新の有無も設定することができます
 
-また，メッセージのフォーマットを指定できます．
- %t タイトル
- %d 説明
- %l リンク
- %n 改行
-に対応しています．デフォルトでは%t%n%n%d%n%n%lです
+オリジナルとは異なり、メッセージのフォーマットを指定は省略しました
+
+
+Original::
+mikutter rss plugin made by yukkuri_sinai
+https://github.com/yukkurisinai/mikutter_rss
