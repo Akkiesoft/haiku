@@ -30,7 +30,7 @@ Plugin.create(:mikutter_rss) do
           #各要素を引っ張ってくる
           title=rss.items[i].title.gsub(/<\/?[^>]*>/, "")
           description=rss.items[i].description.gsub(/<\/?[^>]*>/, "")
-          link=rss.items[oi].link
+          link=rss.items[i].link
 
           #改行を消す設定
           if(UserConfig[:rss_rm_n])
