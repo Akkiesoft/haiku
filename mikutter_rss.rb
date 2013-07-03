@@ -6,7 +6,10 @@ Plugin.create(:mikutter_rss) do
 
   UserConfig[:rss_str]||="%t%n%n%d%n%n%l"
   
+  #Messageを作るときにsystemをtrue以外にすると落ちる
+  #user指定したいんだけど
   def reload
+    user= User.new(:id => 1,:idname => "RSS_reader",:name => "RSSリーダー", :profile_image_url => "target.png")
     #更新を行う
     #ただし これだと複数のRSSが別々で並ぶので，完全な時系列にならなく見にくい可能性がある
     timeline(:mikutter_rss).clear
@@ -15,7 +18,7 @@ Plugin.create(:mikutter_rss) do
       begin
         rss = RSS::Parser.parse(url,true)
       rescue
-        timeline(:mikutter_rss) << Message.new(:message => "RSSのパースに失敗しました\n#{url}", :system => true)
+        timeline(:mikutter_rss) << Message.new(:message => "RSSのパースに失敗しました\n#{url}", :system => true, :user => user, :createdat => Time.now)
       else
         #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
         #汚い
@@ -32,7 +35,7 @@ Plugin.create(:mikutter_rss) do
           end
           link=rss.items[n-i-1].link
           str=UserConfig[:rss_str].gsub("%t",title).gsub("%d",description).gsub("%l",link).gsub("%n","\n")
-          timeline(:mikutter_rss) << Message.new(:message => str, :system => true)
+          timeline(:mikutter_rss) << Message.new(:message => str, :system => true, :user => user, :createdat => Time.now)
           i+=1
         end
       end
