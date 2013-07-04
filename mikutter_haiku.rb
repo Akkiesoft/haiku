@@ -29,21 +29,21 @@ Plugin.create(:mikutter_haiku) do
         allcnt=1
         while i<n do
           #文章を整形
-          keyword=items[n-i-1]['keyword']
-          body   =items[n-i-1]['haiku_text']
-          link   =items[n-i-1]['link']
-          source =items[n-i-1]['source']
+          keyword=items[i]['keyword']
+          body   =items[i]['haiku_text']
+          link   =items[i]['link']
+          source =items[i]['source']
           user = User.new({
             :id => allcnt,
-            :idname => items[n-i-1]['user']['screen_name'],
-            :name => items[n-i-1]['user']['name'],
-            :profile_image_url => items[n-i-1]['user']['profile_image_url'],
-            :url => items[n-i-1]['user']['url']
+            :idname => items[i]['user']['screen_name'],
+            :name => items[i]['user']['name'],
+            :profile_image_url => items[i]['user']['profile_image_url'],
+            :url => items[i]['user']['url']
           })
-          time = Time.parse(items[n-i-1]['created_at'])
+          time = Time.parse(items[i]['created_at'])
           timeline(:mikutter_haiku) << Message.new({
             :id => allcnt,
-            :message => "<#{keyword}> #{body} #{link}",
+            :message => "<#{keyword}>\n#{body}\n#{link}",
             :user => user,
             :source => source,
             :created => time
