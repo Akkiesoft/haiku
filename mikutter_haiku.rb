@@ -11,7 +11,7 @@ Plugin.create(:mikutter_haiku) do
     #更新を行う
     timeline(:mikutter_haiku).clear
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
-      #パースに失敗する場合がある 失敗した場合は例外引っ掛けてスルー
+      #パースに失敗した場合は例外引っ掛けてスルー
       begin
         uri = URI.parse("#{url}?body_formats=haiku")
         json = Net::HTTP.get(uri)
@@ -22,34 +22,68 @@ Plugin.create(:mikutter_haiku) do
           :system => true
         })
       else
-        #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
-        #汚い
-        n=items.size
-        i=0
-        allcnt=1
-        while i<n do
-          #文章を整形
-          keyword=items[n-i-1]['keyword']
-          body   =items[n-i-1]['haiku_text']
-          link   =items[n-i-1]['link']
-          source =items[n-i-1]['source']
-          user = User.new({
-            :id => allcnt,
-            :idname => items[n-i-1]['user']['screen_name'],
-            :name => items[n-i-1]['user']['name'],
-            :profile_image_url => items[n-i-1]['user']['profile_image_url'],
-            :url => items[n-i-1]['user']['url']
+        i = 0
+        allcnt = 1
+        items.each do |item|
+          keyword	= item['target']['title']
+          body		= item['haiku_text']
+          link		= item['link']
+          source	= item['source']
+          time		= Time.parse(item['created_at'])
+
+          # URL記法対応
+          sintaxes = body.split('[')
+          if sintaxes[0] != body then
+            sintaxes.each do |sintax|
+              pos = sintax.index(']')
+              if pos.nil? then
+                next		# これは記法ではない
+              end
+              sintax = sintax.slice(0, pos);
+              sintaxOut = sintax.gsub(/(https?:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)/, "\\2( \\1 )");
+              body = body.gsub("[#{sintax}]", "#{sintaxOut}");
+            end
+          end
+
+          # はてなフォトライフ
+          sintaxes = body.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {|match|
+            foto_id		= match[0];
+            foto_initial	= foto_id.slice(0, 1);
+            foto_date		= match[1];
+            foto_time		= match[2];
+            foto_type		= (defined?(match[3])) ? match[3] : '';
+            foto_mode		= (defined?(match[4])) ? match[4] : '';
+            foto_ext		= 'jpg';
+            foto_ext		= 'gif' if foto_type == 'g'
+            foto_ext		= 'png' if foto_type == 'p'
+            foto_org		= "f:id:#{foto_id}:#{foto_date}#{foto_time}"
+            foto_org		+= foto_type if foto_type
+            foto_org		+= foto_mode if foto_mode
+            foto_img		= "http://cdn-ak.f.st-hatena.com/images/fotolife/#{foto_initial}/#{foto_id}/#{foto_date}/#{foto_date}#{foto_time}.#{foto_ext}"
+            foto_link		= "http://f.hatena.ne.jp/#{foto_id}/#{foto_date}#{foto_time}"
+            if foto_type == "f" && foto_mode == ":movie" then
+              body = body.sub("#{foto_org}", "#{foto_link}")
+            else
+              body = body.sub("#{foto_org}", "#{foto_img}")
+            end
+          }
+
+          user		= User.new({
+            :id					=> allcnt,
+            :idname				=> item['user']['screen_name'],
+            :name				=> item['user']['name'],
+            :profile_image_url	=> item['user']['profile_image_url'],
+            :url				=> item['user']['url']
           })
-          time = Time.parse(items[n-i-1]['created_at'])
           timeline(:mikutter_haiku) << Message.new({
             :id => allcnt,
-            :message => "<#{keyword}> #{body} #{link}",
+            :message => "#{link}\n\n<#{keyword}>\n#{body}",
             :user => user,
             :source => source,
             :created => time
           })
-          i+=1
-          allcnt+=1
+          i += 1
+          allcnt += 1
         end
       end
     end
