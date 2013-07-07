@@ -22,6 +22,7 @@ Plugin.create(:mikutter_haiku) do
           :system => true
         })
       else
+<<<<<<< HEAD
         i = 0
         allcnt = 1
         items.each do |item|
@@ -78,6 +79,30 @@ Plugin.create(:mikutter_haiku) do
           timeline(:mikutter_haiku) << Message.new({
             :id => allcnt,
             :message => "#{link}\n\n<#{keyword}>\n#{body}",
+=======
+        #逆順にTLに入ってしまうので配列に代入してあとからTLに挿入
+        #汚い
+        n=items.size
+        i=0
+        allcnt=1
+        while i<n do
+          #文章を整形
+          keyword=items[i]['keyword']
+          body   =items[i]['haiku_text']
+          link   =items[i]['link']
+          source =items[i]['source']
+          user = User.new({
+            :id => allcnt,
+            :idname => items[i]['user']['screen_name'],
+            :name => items[i]['user']['name'],
+            :profile_image_url => items[i]['user']['profile_image_url'],
+            :url => items[i]['user']['url']
+          })
+          time = Time.parse(items[i]['created_at'])
+          timeline(:mikutter_haiku) << Message.new({
+            :id => allcnt,
+            :message => "<#{keyword}>\n#{body}\n#{link}",
+>>>>>>> bf34cb5918317801b6258b7a6bf68acc2a002979
             :user => user,
             :source => source,
             :created => time
