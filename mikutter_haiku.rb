@@ -1,17 +1,60 @@
 # -*- coding:utf-8 -*-
+################################################################################
+##  mikutter_haiku
+##    https://github.com/Akkiesoft/mikutter_haiku
+##
 
+## mikutter_haikuはご覧のスポンサーでお送りします
 require 'net/http'
 require 'uri'
 require 'json'
 require 'time'
 
+
+## START
 Plugin.create(:mikutter_haiku) do
-  
+
+  ########################################
+  ## Writer :: 投稿処理
+  ##
+  def postToHaiku(message)
+    # 設定が入ってるかチェック
+    cant_post = 0
+    hatena_id = UserConfig[:hatena_id]
+    if hatena_id=='' then
+      cant_post = 1
+    end
+    hatena_api_pass = UserConfig[:hatena_api_pass]
+    if hatena_api_pass=='' then
+      cant_post = 1
+    end
+    
+    if cant_post == 1 then
+      timeline(:mikutter_haiku) << Message.new({
+        :message => "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)",
+        :system => true
+      })
+    else
+      begin
+        res = Net::HTTP.post_form(
+          URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
+          {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku'}
+        )
+      rescue => ee
+        timeline(:mikutter_haiku) << Message.new({
+          :message => "投稿に失敗しました。\n#{ee}",
+          :system => true
+        })
+      end
+	end
+  end
+
+  ########################################
+  ## Reader :: リロード処理
+  ##
   def reload
-    #更新を行う
-    timeline(:mikutter_haiku).clear
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
-      #パースに失敗した場合は例外引っ掛けてスルー
+      # パースに失敗した場合は例外引っ掛けてスルー
       begin
         uri = URI.parse("#{url}?body_formats=haiku")
         json = Net::HTTP.get(uri)
@@ -22,6 +65,9 @@ Plugin.create(:mikutter_haiku) do
           :system => true
         })
       else
+        # TODO:クリアしないで追記読み込みできるようにする
+        timeline(:mikutter_haiku).clear
+
         i = 0
         allcnt = 1
         items.each do |item|
@@ -88,9 +134,11 @@ Plugin.create(:mikutter_haiku) do
       end
     end
   end
-  
+
+  ########################################
+  ## Reader :: タブの作成
+  ##
   btn = Gtk::Button.new('更新')
-  
   tab(:mikutter_haiku, 'はてなハイク') do
     set_icon File.expand_path(File.join(File.dirname(__FILE__), 'logo.png'))
     shrink
@@ -98,27 +146,78 @@ Plugin.create(:mikutter_haiku) do
     expand
     timeline :mikutter_haiku
   end
-  
-  #更新ボタン
+
+  ########################################
+  ## Reader :: 更新ボタンがクリックされた時
+  ##
   btn.signal_connect('clicked'){ |elm|
     reload
   }
-  
-  #1分に1度 自動で更新
+
+  ########################################
+  ## Reader :: 1分に1度 自動で更新
+  ##
   on_period do
     if(UserConfig[:haiku_auto])
       reload
     end
   end
-  
+
+  ########################################
+  ## Reader :: 起動時に読み込み
+  ##
   if(UserConfig[:haiku_exec])
     reload
   end
-  
-  settings "mikutter haiku" do
-    boolean('起動時に更新する', :haiku_exec)
-    boolean('1分毎に自動更新を行う', :haiku_auto)
-    multi "ハイクJSON URL", :haiku_url
+
+  ########################################
+  ## Writer :: ハイクに投稿する
+  ##
+  command(:post_to_haiku,
+  		name: 'ハイクに投稿する',
+  		condition: lambda{ |opt| true },
+  		visible: true,
+  		role: :postbox) do |opt|
+	begin
+		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
+		postToHaiku(message)
+		defactivity "Haiku_post", "Haiku_Post"
+		activity :Haiku_Post, "ハイクに投稿しました"
+		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
+	end
   end
-  
+
+  ########################################
+  ##  Writer :: ハイクとTwitterに投稿する
+  ##
+  command(:post_to_haiku_and_twitter,
+  		name: 'ハイクとTwitterに投稿する',
+  		condition: lambda{ |opt| true },
+  		visible: true,
+  		role: :postbox) do |opt|
+	begin
+		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
+		Service.primary.update(:message => message)
+		postToHaiku(message)
+		defactivity "Haiku_post", "Haiku_Post"
+		activity :Haiku_Post, "ハイクとTwitterに投稿しました"
+		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
+	end
+  end
+
+  ########################################
+  ##  Settings :: 設定画面
+  ##
+  settings "はてなハイク" do
+    settings "投稿の設定(BASIC認証タイプじゃ)" do
+      input("はてなID",:hatena_id)
+      input("APIパスワード",:hatena_api_pass)
+    end
+    settings "タイムライン" do
+      boolean('起動時に更新する', :haiku_exec)
+      boolean('1分毎に自動更新を行う', :haiku_auto)
+      multi "ハイクJSON URL", :haiku_url
+    end
+  end
+
 end
