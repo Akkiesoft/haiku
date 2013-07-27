@@ -14,6 +14,9 @@ require 'time'
 ## START
 Plugin.create(:mikutter_haiku) do
 
+  @@haiku_lastupdate = 0;
+  @@allcnt = 1
+
   ########################################
   ## Writer :: 投稿処理
   ##
@@ -56,7 +59,14 @@ Plugin.create(:mikutter_haiku) do
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
       # パースに失敗した場合は例外引っ掛けてスルー
       begin
-        uri = URI.parse("#{url}?body_formats=haiku")
+       # Gtk::Dialog.alert("YES")
+        now = Time.now.to_i
+        if @@haiku_lastupdate == 0 then
+          timeline = "&reftime=-#{now},0"
+        else
+          timeline = "&reftime=+#{@@haiku_lastupdate},0"
+        end
+        uri = URI.parse("#{url}?body_formats=haiku#{timeline}")
         json = Net::HTTP.get(uri)
         items = JSON.parse(json)
       rescue => ee
@@ -66,16 +76,15 @@ Plugin.create(:mikutter_haiku) do
         })
       else
         # TODO:クリアしないで追記読み込みできるようにする
-        timeline(:mikutter_haiku).clear
+#        timeline(:mikutter_haiku).clear
 
         i = 0
-        allcnt = 1
         items.each do |item|
           keyword	= item['target']['title']
           body		= item['haiku_text']
           link		= item['link']
           source	= item['source']
-          time		= Time.parse(item['created_at'])
+          time		= Time.parse(item['created_at']).localtime
 
           # URL記法対応
           sintaxes = body.split('[')
@@ -115,22 +124,25 @@ Plugin.create(:mikutter_haiku) do
           }
 
           user		= User.new({
-            :id					=> allcnt,
+            :id					=> @@allcnt,
             :idname				=> item['user']['screen_name'],
             :name				=> item['user']['name'],
             :profile_image_url	=> item['user']['profile_image_url'],
             :url				=> item['user']['url']
           })
           timeline(:mikutter_haiku) << Message.new({
-            :id => allcnt,
+            :id => @@allcnt,
             :message => "#{link}\n\n<#{keyword}>\n#{body}",
             :user => user,
             :source => source,
             :created => time
           })
           i += 1
-          allcnt += 1
+          @@allcnt += 1
         end
+
+        # 最後に実行した時間を記録
+        @@haiku_lastupdate = now
       end
     end
   end
@@ -158,16 +170,10 @@ Plugin.create(:mikutter_haiku) do
   ## Reader :: 1分に1度 自動で更新
   ##
   on_period do
-    if(UserConfig[:haiku_auto])
+    # 起動時にもon_periodが来るので、起動時に云々はここでやる
+    if(UserConfig[:haiku_auto] || (@@haiku_lastupdate == 0 && UserConfig[:haiku_exec]))
       reload
     end
-  end
-
-  ########################################
-  ## Reader :: 起動時に読み込み
-  ##
-  if(UserConfig[:haiku_exec])
-    reload
   end
 
   ########################################
@@ -184,6 +190,7 @@ Plugin.create(:mikutter_haiku) do
 		defactivity "Haiku_post", "Haiku_Post"
 		activity :Haiku_Post, "ハイクに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
+        reload
 	end
   end
 
@@ -202,6 +209,7 @@ Plugin.create(:mikutter_haiku) do
 		defactivity "Haiku_post", "Haiku_Post"
 		activity :Haiku_Post, "ハイクとTwitterに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
+        reload
 	end
   end
 
