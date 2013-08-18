@@ -15,7 +15,6 @@ require 'time'
 Plugin.create(:mikutter_haiku) do
 
   @@haiku_lastupdate = 0;
-  @@allcnt = 1
 
   ########################################
   ## Writer :: 投稿処理
@@ -75,9 +74,6 @@ Plugin.create(:mikutter_haiku) do
           :system => true
         })
       else
-        # TODO:クリアしないで追記読み込みできるようにする
-#        timeline(:mikutter_haiku).clear
-
         i = 0
         items.each do |item|
           keyword	= item['target']['title']
@@ -123,22 +119,22 @@ Plugin.create(:mikutter_haiku) do
             end
           }
 
-          user		= User.new({
-            :id					=> @@allcnt,
+          user   = User.new({
+            # :idはハイクに数値IDが存在しないのでハッシュでごまかす
+            :id					=> "#{item['user']['id']}".hash,
             :idname				=> item['user']['screen_name'],
             :name				=> item['user']['name'],
             :profile_image_url	=> item['user']['profile_image_url'],
             :url				=> item['user']['url']
           })
           timeline(:mikutter_haiku) << Message.new({
-            :id => @@allcnt,
+            :id => item['id'].to_i,
             :message => "#{link}\n\n<#{keyword}>\n#{body}",
             :user => user,
             :source => source,
             :created => time
           })
           i += 1
-          @@allcnt += 1
         end
 
         # 最後に実行した時間を記録
