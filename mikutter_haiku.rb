@@ -40,14 +40,13 @@ Plugin.create(:mikutter_haiku) do
       begin
         res = Net::HTTP.post_form(
           URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
-          {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku', 'body_formats'=>'haiku'}
+          {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku'}
         )
-        item = JSON.parse(res.body)
-        # 投稿とJSONパースが失敗しなければパース済みのitemが返る
-        return item
       rescue => ee
-        # でなきゃfalse
-        return false
+        timeline(:mikutter_haiku) << Message.new({
+          :message => "投稿に失敗しました。\n#{ee}",
+          :system => true
+        })
       end
 	end
   end
@@ -60,6 +59,7 @@ Plugin.create(:mikutter_haiku) do
       # それぞれ別スレッドとして実行する
       Thread.fork {
         begin
+         # Gtk::Dialog.alert("YES")
           now = Time.now.to_i
           if @@haiku_lastupdate == 0 then
             timeline = "&reftime=-#{now},0"
@@ -76,80 +76,76 @@ Plugin.create(:mikutter_haiku) do
             :system => true
           })
         else
+          i = 0
           items.each do |item|
-            insert_entry(item, :mikutter_haiku)
+            keyword	= item['target']['title']
+            body		= item['haiku_text']
+            link		= item['link']
+            source	= item['source']
+            time		= Time.parse(item['created_at']).localtime
+	
+            # URL記法対応
+            sintaxes = body.split('[')
+            if sintaxes[0] != body then
+              sintaxes.each do |sintax|
+                pos = sintax.index(']')
+                if pos.nil? then
+                  next		# これは記法ではない
+                end
+                sintax = sintax.slice(0, pos);
+                sintaxOut = sintax.gsub(/(https?:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)/, "\\2( \\1 )");
+                body = body.gsub("[#{sintax}]", "#{sintaxOut}");
+              end
+            end
+	
+            # はてなフォトライフ
+            sintaxes = body.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {|match|
+              foto_id		= match[0];
+              foto_initial	= foto_id.slice(0, 1);
+              foto_date		= match[1];
+              foto_time		= match[2];
+              foto_type		= (defined?(match[3])) ? match[3] : '';
+              foto_mode		= (defined?(match[4])) ? match[4] : '';
+              foto_ext		= 'jpg';
+              foto_ext		= 'gif' if foto_type == 'g'
+              foto_ext		= 'png' if foto_type == 'p'
+              foto_org		= "f:id:#{foto_id}:#{foto_date}#{foto_time}"
+              foto_org		+= foto_type if foto_type
+              foto_org		+= foto_mode if foto_mode
+              foto_img		= "http://cdn-ak.f.st-hatena.com/images/fotolife/#{foto_initial}/#{foto_id}/#{foto_date}/#{foto_date}#{foto_time}.#{foto_ext}"
+              foto_link		= "http://f.hatena.ne.jp/#{foto_id}/#{foto_date}#{foto_time}"
+              if foto_type == "f" && foto_mode == ":movie" then
+                body = body.sub("#{foto_org}", "#{foto_link}")
+              else
+                body = body.sub("#{foto_org}", "#{foto_img}")
+              end
+            }
+	
+            user   = User.new({
+              # :idはハイクに数値IDが存在しないのでハッシュでごまかす
+              :id					=> "#{item['user']['id']}".hash,
+              :idname				=> item['user']['screen_name'],
+              :nickname				=> item['user']['name'],
+              :profile_image_url	=> item['user']['profile_image_url'],
+              :detail				=> "not available",
+              :url					=> item['user']['url']
+            })
+            timeline(:mikutter_haiku) << Message.new({
+              :id => item['id'].to_i,
+              :message => "#{link}\n\n<#{keyword}>\n#{body}",
+              :user => user,
+              :source => source,
+              :created => time
+            })
+            i += 1
           end
+	
           # 最後に実行した時間を記録
           @@haiku_lastupdate = now
         end
 	  }
     end
   end
-
-  ########################################
-  ## Timeline :: エントリーの挿入
-  ##
-  def insert_entry(item, timeline)
-    keyword	= item['target']['title']
-    body		= item['haiku_text']
-    link		= item['link']
-    source	= item['source']
-    time		= Time.parse(item['created_at']).localtime
-	
-    # URL記法対応
-    sintaxes = body.split('[')
-    if sintaxes[0] != body then
-      sintaxes.each do |sintax|
-        pos = sintax.index(']')
-        if pos.nil? then
-          next		# これは記法ではない
-        end
-        sintax = sintax.slice(0, pos);
-        sintaxOut = sintax.gsub(/(https?:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)/, "\\2( \\1 )");
-        body = body.gsub("[#{sintax}]", "#{sintaxOut}");
-      end
-    end
-	
-    # はてなフォトライフ
-    sintaxes = body.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {|match|
-      foto_id		= match[0];
-      foto_initial	= foto_id.slice(0, 1);
-      foto_date		= match[1];
-      foto_time		= match[2];
-      foto_type		= (defined?(match[3])) ? match[3] : '';
-      foto_mode		= (defined?(match[4])) ? match[4] : '';
-      foto_ext		= 'jpg';
-      foto_ext		= 'gif' if foto_type == 'g'
-      foto_ext		= 'png' if foto_type == 'p'
-      foto_org		= "f:id:#{foto_id}:#{foto_date}#{foto_time}"
-      foto_org		+= foto_type if foto_type
-      foto_org		+= foto_mode if foto_mode
-      foto_img		= "http://cdn-ak.f.st-hatena.com/images/fotolife/#{foto_initial}/#{foto_id}/#{foto_date}/#{foto_date}#{foto_time}.#{foto_ext}"
-      foto_link		= "http://f.hatena.ne.jp/#{foto_id}/#{foto_date}#{foto_time}"
-      if foto_type == "f" && foto_mode == ":movie" then
-        body = body.sub("#{foto_org}", "#{foto_link}")
-      else
-        body = body.sub("#{foto_org}", "#{foto_img}")
-      end
-    }
-	
-    user   = User.new({
-      # :idはハイクに数値IDが存在しないのでハッシュでごまかす
-      :id					=> "#{item['user']['id']}".hash,
-      :idname				=> item['user']['screen_name'],
-      :name				=> item['user']['name'],
-      :profile_image_url	=> item['user']['profile_image_url'],
-      :url				=> item['user']['url']
-    })
-    timeline(timeline) << Message.new({
-      :id => item['id'].to_i,
-      :message => "#{link}\n\n<#{keyword}>\n#{body}",
-      :user => user,
-      :source => source,
-      :created => time
-    })
-  end
-  
 
   ########################################
   ## Reader :: タブの作成
@@ -190,16 +186,11 @@ Plugin.create(:mikutter_haiku) do
   		role: :postbox) do |opt|
 	begin
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
-		result = postToHaiku(message)
+		postToHaiku(message)
 		defactivity "Haiku_post", "Haiku_Post"
-		if result == false then
-			activity :Haiku_Post, "ハイクへの投稿に失敗しました。"
-		else
-			activity :Haiku_Post, "ハイクに投稿しました。"
-			Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
-	        insert_entry(result, :mikutter_haiku)
-	        @@haiku_lastupdate = Time.parse(result['created_at']).to_i
-	    end
+		activity :Haiku_Post, "ハイクに投稿しました"
+		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
+        reload
 	end
   end
 
@@ -214,16 +205,11 @@ Plugin.create(:mikutter_haiku) do
 	begin
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
 		Service.primary.update(:message => message)
-		result = postToHaiku(message)
+		postToHaiku(message)
 		defactivity "Haiku_post", "Haiku_Post"
-		if result == false then
-			activity :Haiku_Post, "ハイクへの投稿に失敗しました。"
-		else
-			activity :Haiku_Post, "ハイクとTwitterに投稿しました。"
-			Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
-	        insert_entry(result, :mikutter_haiku)
-	        @@haiku_lastupdate = Time.parse(result['created_at']).to_i
-	    end
+		activity :Haiku_Post, "ハイクとTwitterに投稿しました"
+		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
+        reload
 	end
   end
 
