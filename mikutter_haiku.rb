@@ -14,6 +14,8 @@ require 'time'
 ## START
 Plugin.create(:mikutter_haiku) do
 
+  defactivity "mikutter_haiku", "はてなハイク"
+
   @@haiku_lastupdate = 0;
 
   ########################################
@@ -32,10 +34,7 @@ Plugin.create(:mikutter_haiku) do
     end
     
     if cant_post == 1 then
-      timeline(:mikutter_haiku) << Message.new({
-        :message => "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)",
-        :system => true
-      })
+      activity :mikutter_haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
     else
       begin
         res = Net::HTTP.post_form(
@@ -43,10 +42,7 @@ Plugin.create(:mikutter_haiku) do
           {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku'}
         )
       rescue => ee
-        timeline(:mikutter_haiku) << Message.new({
-          :message => "投稿に失敗しました。\n#{ee}",
-          :system => true
-        })
+        activity :mikutter_haiku, "投稿に失敗しました。\n#{ee}"
       end
 	end
   end
@@ -57,7 +53,7 @@ Plugin.create(:mikutter_haiku) do
   def reload
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
       # それぞれ別スレッドとして実行する
-      Thread.fork {
+      #Thread.fork {
         begin
          # Gtk::Dialog.alert("YES")
           now = Time.now.to_i
@@ -71,17 +67,15 @@ Plugin.create(:mikutter_haiku) do
           items = JSON.parse(json)
         rescue => ee
         # パースに失敗した場合は例外引っ掛けてスルー
-          timeline(:mikutter_haiku) << Message.new({
-            :message => "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}",
-            :system => true
-          })
+          activity :mikutter_haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
         else
           i = 0
           items.each do |item|
-            keyword	= item['target']['title']
+            msgs = Messages.new
+            keyword		= item['target']['title']
             body		= item['haiku_text']
             link		= item['link']
-            source	= item['source']
+            source		= item['source']
             time		= Time.parse(item['created_at']).localtime
 	
             # URL記法対応
@@ -120,51 +114,80 @@ Plugin.create(:mikutter_haiku) do
                 body = body.sub("#{foto_org}", "#{foto_img}")
               end
             }
-	
+            message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
+            message_text = "#{message_head}<#{keyword}>\n#{body}"
+            entities = {
+                urls: [
+                  {
+                    url: item['user']['screen_name'],
+                    expanded_url: item['user']['url'], 
+                    display_url: item['user']['screen_name'],
+                    indices: [0, message_head.length]
+                  },
+                  {
+                    url: "(Permalink)",
+                    expanded_url: link, 
+                    display_url: "(Permalink)",
+                    indices: [0, message_head.length]
+                  },
+                  {
+                    url: "<#{keyword}>",
+                    expanded_url: "http://h.hatena.ne.jp/target?word=#{keyword}", 
+                    display_url: "<#{keyword}>",
+                    indices: [message_head.length, message_head.length + "<#{keyword}>".length + 2]
+                  },
+                ],
+                symbols: [],
+                hashtags: [],
+                user_mentions: []
+            }
             user   = User.new({
               # :idはハイクに数値IDが存在しないのでハッシュでごまかす
               :id					=> "#{item['user']['id']}".hash,
               :idname				=> item['user']['screen_name'],
-              :nickname				=> item['user']['name'],
+              :name					=> item['user']['name'],
+              :nickname				=> item['user']['screen_name'],
               :profile_image_url	=> item['user']['profile_image_url'],
-              :detail				=> "not available",
+              :detail				=> "",
               :url					=> item['user']['url']
             })
-            timeline(:mikutter_haiku) << Message.new({
-              :id => item['id'].to_i,
-              :message => "#{link}\n\n<#{keyword}>\n#{body}",
+            msgs << Message.new({
+              :id => time.to_i,
+              :message => message_text,
               :user => user,
               :source => source,
-              :created => time
+              :created => time,
+              :entities => entities
             })
             i += 1
+            Plugin.call(:extract_receive_message, :mikutter_haiku, msgs)
           end
 	
           # 最後に実行した時間を記録
           @@haiku_lastupdate = now
         end
-	  }
+	  #}
     end
   end
 
   ########################################
   ## Reader :: タブの作成
   ##
-  btn = Gtk::Button.new('更新')
-  tab(:mikutter_haiku, 'はてなハイク') do
-    set_icon File.expand_path(File.join(File.dirname(__FILE__), 'logo.png'))
-    shrink
-    nativewidget Gtk::HBox.new(false, 0).closeup(btn)
-    expand
-    timeline :mikutter_haiku
-  end
+#  btn = Gtk::Button.new('更新')
+#  tab(:mikutter_haiku, 'はてなハイク') do
+#    set_icon File.expand_path(File.join(File.dirname(__FILE__), 'logo.png'))
+#    shrink
+#    nativewidget Gtk::HBox.new(false, 0).closeup(btn)
+#    expand
+#    timeline :mikutter_haiku
+#  end
 
   ########################################
   ## Reader :: 更新ボタンがクリックされた時
   ##
-  btn.signal_connect('clicked'){ |elm|
-    reload
-  }
+#  btn.signal_connect('clicked'){ |elm|
+#    reload
+#  }
 
   ########################################
   ## Reader :: 1分に1度 自動で更新
@@ -211,6 +234,12 @@ Plugin.create(:mikutter_haiku) do
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
         reload
 	end
+  end
+
+
+  filter_extract_datasources do |datasources|
+      datasources[:mikutter_haiku] = "はてなハイク"
+      [datasources]
   end
 
   ########################################

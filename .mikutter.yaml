@@ -1,13 +1,12 @@
----
 slug: :mikutter_haiku
 depends:
-  mikutter: 0.2.2.1297
+  mikutter: 3.0.4
   plugin:
   - gtk
   - gui
   - command
   - settings
-version: '0.2'
+version: '0.5'
 author: Akkiesoft
 name: mikutter_haiku
 description: はてなハイクの読み書きをするプラグイン
