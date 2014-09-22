@@ -67,7 +67,7 @@ Plugin.create(:mikutter_haiku) do
         # パースに失敗した場合は例外引っ掛けてスルー
         activity :mikutter_haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
       else
-        if items.length then
+        if items.length != 0 then
           # 最後に実行した時間を記録
           @@haiku_lastupdate = parse(items)
         end
@@ -184,7 +184,7 @@ Plugin.create(:mikutter_haiku) do
       })
       Plugin.call(:extract_receive_message, :mikutter_haiku, msgs)
     end
-    return Time.parse(items[0]['created_at']).localtime
+    return Time.parse(items[0]['created_at']).to_i
   end
 
   ########################################
