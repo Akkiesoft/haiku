@@ -58,7 +58,7 @@ Plugin.create(:mikutter_haiku) do
         if @@haiku_lastupdate == 0 then
           timeline = "&reftime=-#{now},0"
         else
-          timeline = "&reftime=+#{@@haiku_lastupdate},0"
+          timeline = "&reftime=+#{@@haiku_lastupdate},1"
         end
         uri = URI.parse("#{url}?body_formats=haiku#{timeline}")
         json = Net::HTTP.get(uri)
@@ -67,9 +67,10 @@ Plugin.create(:mikutter_haiku) do
         # パースに失敗した場合は例外引っ掛けてスルー
         activity :mikutter_haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
       else
-        parse(items)
-        # 最後に実行した時間を記録
-        @@haiku_lastupdate = now
+        if items.length then
+          # 最後に実行した時間を記録
+          @@haiku_lastupdate = parse(items)
+        end
         if (UserConfig[:haiku_auto]) then
           Reserver.new(60) {
             reload_haiku
@@ -183,6 +184,7 @@ Plugin.create(:mikutter_haiku) do
       })
       Plugin.call(:extract_receive_message, :mikutter_haiku, msgs)
     end
+    return Time.parse(items[0]['created_at']).localtime
   end
 
   ########################################
