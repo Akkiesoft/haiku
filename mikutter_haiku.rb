@@ -230,13 +230,11 @@ Plugin.create(:mikutter_haiku) do
   ##  Settings :: 設定画面
   ##
   settings "はてなハイク" do
-    settings "投稿の設定(BASIC認証タイプじゃ)" do
+    settings "投稿の設定(BASIC認証タイプ)" do
       input("はてなID",:hatena_id)
       input("APIパスワード",:hatena_api_pass)
     end
-    settings "タイムライン" do
-      multi "ハイクJSON URL", :haiku_url
-    end
+    multi "タイムラインに表示するハイクJSON URL", :haiku_url
   end
 
   ########################################
