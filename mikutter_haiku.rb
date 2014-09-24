@@ -51,6 +51,9 @@ Plugin.create(:mikutter_haiku) do
   ########################################
   ## Reader :: リロード処理
   ##
+# TODO:
+# JSONごとにlastupdateを持たせるようにする
+# {["url":"<URL>", "lastupdate":"<time>"],...}みたいなのを作って管理？
   def reload_haiku
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
       begin
@@ -71,13 +74,12 @@ Plugin.create(:mikutter_haiku) do
           # 最後に実行した時間を記録
           @@haiku_lastupdate = parse(items)
         end
-        if (UserConfig[:haiku_auto]) then
-          Reserver.new(60) {
-            reload_haiku
-          }
-        end
       end
     end
+    # また1分後にリロード
+    Reserver.new(60) {
+      reload_haiku
+    }
   end
 
   ########################################
@@ -233,7 +235,6 @@ Plugin.create(:mikutter_haiku) do
       input("APIパスワード",:hatena_api_pass)
     end
     settings "タイムライン" do
-      boolean('1分毎に自動更新を行う', :haiku_auto)
       multi "ハイクJSON URL", :haiku_url
     end
   end
