@@ -1,6 +1,6 @@
 slug: :mikutter_haiku
 depends:
-  mikutter: 3.0.4
+  mikutter: '3.1'
   plugin:
   - gtk
   - gui
