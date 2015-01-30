@@ -92,8 +92,15 @@ Plugin.create(:mikutter_haiku) do
       link		= item['link']
       source	= item['source']
       time		= Time.parse(item['created_at']).localtime
-      message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
-      message_text = "#{message_head}<#{keyword}>\n#{body}"
+
+      # はてなフォトライフ
+      body.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {
+        match = Regexp.last_match
+        body = body.sub(
+          "#{match.to_s}",
+          "http://f.hatena.ne.jp/#{match[1]}/#{match[2]}#{match[3]}"
+        )
+      }
 
       user = User.new({
         # :idはハイクに数値IDが存在しないのでハッシュでごまかす
@@ -106,6 +113,9 @@ Plugin.create(:mikutter_haiku) do
         detail: ""
       })
 
+      message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
+      message_text = "#{message_head}<#{keyword}>\n#{body}"
+
       message = Message.new({
         id: time.to_i,
         message: message_text,
@@ -113,31 +123,6 @@ Plugin.create(:mikutter_haiku) do
         source: source,
         created: time
       })
-
-      # はてなフォトライフ
-      message_text.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {
-        match = Regexp.last_match
-        pos = match.begin(0)
-        foto_id			= match[1];
-        foto_initial	= foto_id.slice(0, 1);
-        foto_date		= match[2];
-        foto_time		= match[3];
-        foto_type		= (defined?(match[4])) ? match[4] : '';
-        foto_mode		= (defined?(match[5])) ? match[5] : '';
-        foto_ext		= 'jpg';
-        foto_ext		= 'gif' if foto_type == 'g'
-        foto_ext		= 'png' if foto_type == 'p'
-        foto_org		= match.to_s
-        foto_url = if foto_type == "f" && foto_mode == ":movie" then
-                     "http://f.hatena.ne.jp/#{foto_id}/#{foto_date}#{foto_time}"
-                   else
-                     "http://cdn-ak.f.st-hatena.com/images/fotolife/#{foto_initial}/#{foto_id}/#{foto_date}/#{foto_date}#{foto_time}.#{foto_ext}"
-                   end
-        message.entity.add(slug: :urls,
-                           url: foto_url,
-                           face: foto_org,
-                           range: pos...(pos + foto_org.size))
-      }
 
       # Entitiesの作成
       message.entity.add(slug: :urls,
