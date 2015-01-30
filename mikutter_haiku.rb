@@ -33,7 +33,7 @@ Plugin.create(:mikutter_haiku) do
     if hatena_api_pass=='' then
       cant_post = 1
     end
-    
+
     if cant_post == 1 then
       activity :mikutter_haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
     else
@@ -86,106 +86,86 @@ Plugin.create(:mikutter_haiku) do
   ## Reader :: パース処理
   ##
   def parse(items)
-    items.each do |item|
-      msgs = Messages.new
+    messages = items.inject(Messages.new) do |msgs, item|
       keyword	= item['target']['title']
       body		= item['haiku_text']
       link		= item['link']
       source	= item['source']
       time		= Time.parse(item['created_at']).localtime
-
-      # はてなフォトライフ
-      sintaxes = body.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {|match|
-        foto_id			= match[0];
-        foto_initial	= foto_id.slice(0, 1);
-        foto_date		= match[1];
-        foto_time		= match[2];
-        foto_type		= (defined?(match[3])) ? match[3] : '';
-        foto_mode		= (defined?(match[4])) ? match[4] : '';
-        foto_ext		= 'jpg';
-        foto_ext		= 'gif' if foto_type == 'g'
-        foto_ext		= 'png' if foto_type == 'p'
-        foto_org		= "f:id:#{foto_id}:#{foto_date}#{foto_time}"
-        foto_org		+= foto_type if foto_type
-        foto_org		+= foto_mode if foto_mode
-        foto_img		= "http://cdn-ak.f.st-hatena.com/images/fotolife/#{foto_initial}/#{foto_id}/#{foto_date}/#{foto_date}#{foto_time}.#{foto_ext}"
-        foto_link		= "http://f.hatena.ne.jp/#{foto_id}/#{foto_date}#{foto_time}"
-        if foto_type == "f" && foto_mode == ":movie" then
-          body = body.sub("#{foto_org}", "#{foto_link}")
-        else
-          body = body.sub("#{foto_org}", "#{foto_img}")
-        end
-      }
-
-      # Entitiesの作成
       message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
       message_text = "#{message_head}<#{keyword}>\n#{body}"
-      entities = {
-        urls: [
-          {
-            url: item['user']['screen_name'],
-            expanded_url: item['user']['url'],
-            display_url: item['user']['screen_name'],
-            indices: [0, message_head.length]
-          },
-          {
-            url: "(Permalink)",
-            expanded_url: link,
-            display_url: "(Permalink)",
-            indices: [0, message_head.length]
-          },
-          {
-            url: "<#{keyword}>",
-            expanded_url: "http://h.hatena.ne.jp/target?word=#{keyword}",
-            display_url: "<#{keyword}>",
-            indices: [message_head.length, message_head.length + "<#{keyword}>".length + 2]
-          },
-        ],
-        symbols: [],
-        hashtags: [],
-        user_mentions: []
-      }
-
-      # URL記法対応
-      sintaxes = body.split('[')
-      if sintaxes[0] != body then
-        sintaxes.each do |sintax|
-          pos = sintax.index(']')
-          if pos.nil? then
-            next		# これは記法ではない
-          end
-          sintax = sintax.slice(0, pos);
-          sintaxUrl = sintax.gsub(/(https?:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)/, "\\1");
-          sintaxTitle = sintax.gsub(/(https?:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)/, "\\2");
-          entities[:urls].concat([{
-            url: "[#{sintax}]",
-            expanded_url: sintaxUrl,
-            display_url: sintaxTitle,
-            indices: [0, message_text.length]	# てぬき
-          }])
-        end
-      end
 
       user = User.new({
         # :idはハイクに数値IDが存在しないのでハッシュでごまかす
-        :id					=> "#{item['user']['id']}".hash,
-        :idname				=> item['user']['screen_name'],
-        :name				=> item['user']['name'],
-        :nickname			=> item['user']['screen_name'],
-        :profile_image_url	=> item['user']['profile_image_url'],
-        :url				=> item['user']['url'],
-        :detail				=> ""
+        id: "#{item['user']['id']}".hash,
+        idname: item['user']['screen_name'],
+        name: item['user']['name'],
+        nickname: item['user']['screen_name'],
+        profile_image_url: item['user']['profile_image_url'],
+        url: item['user']['url'],
+        detail: ""
       })
-      msgs << Message.new({
-        :id			=> time.to_i,
-        :message	=> message_text,
-        :user		=> user,
-        :source		=> source,
-        :created	=> time,
-        :entities	=> entities
+
+      message = Message.new({
+        id: time.to_i,
+        message: message_text,
+        user: user,
+        source: source,
+        created: time
       })
-      Plugin.call(:extract_receive_message, :mikutter_haiku, msgs)
+
+      # はてなフォトライフ
+      message_text.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {
+        match = Regexp.last_match
+        pos = match.begin(0)
+        foto_id			= match[1];
+        foto_initial	= foto_id.slice(0, 1);
+        foto_date		= match[2];
+        foto_time		= match[3];
+        foto_type		= (defined?(match[4])) ? match[4] : '';
+        foto_mode		= (defined?(match[5])) ? match[5] : '';
+        foto_ext		= 'jpg';
+        foto_ext		= 'gif' if foto_type == 'g'
+        foto_ext		= 'png' if foto_type == 'p'
+        foto_org		= match.to_s
+        foto_url = if foto_type == "f" && foto_mode == ":movie" then
+                     "http://f.hatena.ne.jp/#{foto_id}/#{foto_date}#{foto_time}"
+                   else
+                     "http://cdn-ak.f.st-hatena.com/images/fotolife/#{foto_initial}/#{foto_id}/#{foto_date}/#{foto_date}#{foto_time}.#{foto_ext}"
+                   end
+        message.entity.add(slug: :urls,
+                           url: foto_url,
+                           face: foto_org,
+                           range: pos...(pos + foto_org.size))
+      }
+
+      # Entitiesの作成
+      message.entity.add(slug: :urls,
+                         url: item['user']['url'],
+                         face: item['user']['screen_name'],
+                         range: 0...item['user']['screen_name'].size)
+      message.entity.add(slug: :urls,
+                         url: link,
+                         face: "(Permalink)",
+                         range: (item['user']['screen_name'].size+1)...(message_head.size-2))
+      message.entity.add(slug: :urls,
+                         url: "http://h.hatena.ne.jp/target?word=#{keyword}",
+                         face: "<#{keyword}>",
+                         range: (message_head.length)...(message_head.length + "<#{keyword}>".length))
+
+      # URL記法対応
+      message_text.gsub(/\[(https?:\/\/[-_.!~*\'\(\)a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)\]/) do
+        match = Regexp.last_match
+        pos = match.begin(0)
+        message.entity.add(slug: :urls,
+                           url: match[1],
+                           face: match[2],
+                           range: pos...(pos + match.to_s.size))
+      end
+
+      msgs << message
     end
+    Plugin.call(:extract_receive_message, :mikutter_haiku, messages)
     return Time.parse(items[0]['created_at']).to_i
   end
 
