@@ -13,35 +13,32 @@ require 'time'
 
 ## START
 Plugin.create(:mikutter_haiku) do
-
   defactivity "mikutter_haiku", "はてなハイク"
-
-  # TODO: warning: class variable access from toplevelなので対処する
-  @@haiku_lastupdate = 0;
 
   ########################################
   ## Writer :: 投稿処理
   ##
   def postToHaiku(message)
     # 設定が入ってるかチェック
-    cant_post = 0
+    cant_post = nil
     hatena_id = UserConfig[:hatena_id]
-    if hatena_id=='' then
-      cant_post = 1
-    end
+    cant_post = 1 unless hatena_id
     hatena_api_pass = UserConfig[:hatena_api_pass]
-    if hatena_api_pass=='' then
-      cant_post = 1
-    end
+    cant_post = 1 unless hatena_api_pass
 
-    if cant_post == 1 then
+    if cant_post
       activity :mikutter_haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
     else
       begin
-        res = Net::HTTP.post_form(
-          URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
-          {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku'}
-        )
+        Thread.new {
+          res = Net::HTTP.post_form(
+            URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
+            {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku'}
+          )
+          # TODO: ホントはこういうのをやりたいけどうまく差し込めていない
+          #items = [ JSON.parse(res.body) ]
+          #parse(items)
+        }
       rescue => ee
         activity :mikutter_haiku, "投稿に失敗しました。\n#{ee}"
       end
@@ -54,32 +51,24 @@ Plugin.create(:mikutter_haiku) do
 # TODO:
 # JSONごとにlastupdateを持たせるようにする
 # {["url":"<URL>", "lastupdate":"<time>"],...}みたいなのを作って管理？
-  def reload_haiku
+  def reload_haiku(haiku_lastupdate, mode)
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
       begin
         now = Time.now.to_i
-        if @@haiku_lastupdate == 0 then
-          timeline = "&reftime=-#{now},0"
-        else
-          timeline = "&reftime=+#{@@haiku_lastupdate},1"
-        end
-        uri = URI.parse("#{url}?body_formats=haiku#{timeline}")
-        json = Net::HTTP.get(uri)
+        timeline = (haiku_lastupdate) ? "+#{haiku_lastupdate},1" : "-#{now},0"
+        json = Net::HTTP.get(
+          URI.parse("#{url}?body_formats=haiku&reftime=#{timeline}"))
         items = JSON.parse(json)
       rescue => ee
         # パースに失敗した場合は例外引っ掛けてスルー
         activity :mikutter_haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
       else
-        if items.length != 0 then
-          # 最後に実行した時間を記録
-          @@haiku_lastupdate = parse(items)
-        end
+        # 最後に実行した時間を記録
+        haiku_lastupdate = parse(items) if items.length
       end
     end
-    # また1分後にリロード
-    Reserver.new(60) {
-      reload_haiku
-    }
+    # mode==1だったらまた1分後にリロード
+    Reserver.new(60) { reload_haiku(haiku_lastupdate, 1) } if mode
   end
 
   ########################################
@@ -165,10 +154,8 @@ Plugin.create(:mikutter_haiku) do
 	begin
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
 		postToHaiku(message)
-		defactivity "Haiku_post", "Haiku_Post"
-		activity :Haiku_Post, "ハイクに投稿しました"
+		activity :mikutter_haiku, "ハイクに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
-        reload_haiku
 	end
   end
 
@@ -184,10 +171,8 @@ Plugin.create(:mikutter_haiku) do
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
 		Service.primary.update(:message => message)
 		postToHaiku(message)
-		defactivity "Haiku_post", "Haiku_Post"
-		activity :Haiku_Post, "ハイクとTwitterに投稿しました"
+		activity :mikutter_haiku, "ハイクとTwitterに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
-        reload_haiku
 	end
   end
 
@@ -213,8 +198,6 @@ Plugin.create(:mikutter_haiku) do
   ########################################
   ## Reader :: スタート
   ##
-  SerialThread.new {
-    reload_haiku
-  }
+  SerialThread.new { reload_haiku(nil, 1) }
 
 end
