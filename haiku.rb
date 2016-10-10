@@ -10,6 +10,7 @@ require 'uri'
 require 'json'
 require 'time'
 
+require_relative 'retriver'
 
 ## START
 Plugin.create(:haiku) do
@@ -58,6 +59,8 @@ Plugin.create(:haiku) do
         timeline = (haiku_lastupdate) ? "+#{haiku_lastupdate},1" : "-#{now},0"
         json = Net::HTTP.get(
           URI.parse("#{url}?body_formats=haiku&reftime=#{timeline}"))
+#DEBUG
+#        json = File.open("/Users/akkie/public_html/test.json").read
         items = JSON.parse(json)
       rescue => ee
         # パースに失敗した場合は例外引っ掛けてスルー
@@ -75,8 +78,10 @@ Plugin.create(:haiku) do
   ## Reader :: パース処理
   ##
   def parse(items)
-    messages = items.inject(Messages.new) do |msgs, item|
+    messages = items.each do |item|
+      id		  = item['id']
       keyword	= item['target']['title']
+      keyword_url = URI.encode_www_form_component(keyword)
       body		= item['haiku_text']
       link		= item['link']
       source	= item['source']
@@ -91,7 +96,7 @@ Plugin.create(:haiku) do
         )
       }
 
-      user = User.new({
+      user = Plugin::Haiku::User.new({
         # :idはハイクに数値IDが存在しないのでハッシュでごまかす
         id: "#{item['user']['id']}".hash,
         idname: item['user']['screen_name'],
@@ -105,8 +110,8 @@ Plugin.create(:haiku) do
       message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
       message_text = "#{message_head}<#{keyword}>\n#{body}"
 
-      message = Message.new({
-        id: time.to_i,
+      message = Plugin::Haiku::Entry.new({
+        id: id,
         message: message_text,
         user: user,
         source: source,
@@ -123,7 +128,7 @@ Plugin.create(:haiku) do
                          face: "(Permalink)",
                          range: (item['user']['screen_name'].size+1)...(message_head.size-2))
       message.entity.add(slug: :urls,
-                         url: "http://h.hatena.ne.jp/target?word=#{keyword}",
+                         url: "http://h.hatena.ne.jp/target?word=#{keyword_url}",
                          face: "<#{keyword}>",
                          range: (message_head.length)...(message_head.length + "<#{keyword}>".length))
 
@@ -137,9 +142,9 @@ Plugin.create(:haiku) do
                            range: pos...(pos + match.to_s.size))
       end
 
-      msgs << message
+    #  msgs << message
+      Plugin.call(:extract_receive_message, :haiku, [message])
     end
-    Plugin.call(:extract_receive_message, :haiku, messages)
     return Time.parse(items[0]['created_at']).to_i
   end
 
