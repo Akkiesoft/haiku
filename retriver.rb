@@ -44,7 +44,7 @@ module Plugin::Haiku
 
     field.string :id
     field.string :message
-    field.string :user
+    field.has    :user, Plugin::Haiku::User
     field.string :link
     field.string :source
     field.time   :created
