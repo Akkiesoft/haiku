@@ -165,23 +165,6 @@ Plugin.create(:haiku) do
   end
 
   ########################################
-  ##  Writer :: ハイクとTwitterに投稿する
-  ##
-  command(:post_to_haiku_and_twitter,
-  		name: 'ハイクとTwitterに投稿する',
-  		condition: lambda{ |opt| true },
-  		visible: true,
-  		role: :postbox) do |opt|
-	begin
-		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
-		Service.primary.update(:message => message)
-		postToHaiku(message)
-		activity :haiku, "ハイクとTwitterに投稿しました"
-		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
-	end
-  end
-
-  ########################################
   ##  Settings :: 設定画面
   ##
   settings "はてなハイク" do
