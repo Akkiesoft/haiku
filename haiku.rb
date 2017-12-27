@@ -10,7 +10,7 @@ require 'uri'
 require 'json'
 require 'time'
 
-require_relative 'retriver'
+require_relative 'model'
 
 ## START
 Plugin.create(:haiku) do
