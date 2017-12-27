@@ -188,4 +188,18 @@ Plugin.create(:haiku) do
   ##
   SerialThread.new { reload_haiku(nil, 1) }
 
+  # World
+  world_setting(:haiku, 'はてなハイク') do
+    label "ログイン情報を入力してください"
+    input "はてなID", :hatena_id
+    inputpass "APIパスワード", :hatena_api_pass
+    label "APIパスワードは以下のURLで確認できます"
+    link "http://h.hatena.ne.jp/setting/devices"
+    result = await_input
+
+    world = await builder.build(result)
+    label "このアカウントでログインしますか？"
+    world
+  end
+
 end
