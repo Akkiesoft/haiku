@@ -1,4 +1,4 @@
-slug: :mikutter_haiku
+slug: :haiku
 depends:
   mikutter: '3.1'
   plugin:
@@ -8,5 +8,5 @@ depends:
   - settings
 version: '0.5'
 author: Akkiesoft
-name: mikutter_haiku
+name: haiku
 description: はてなハイクの読み書きをするプラグイン

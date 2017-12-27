@@ -1,10 +1,10 @@
 # -*- coding:utf-8 -*-
 ################################################################################
-##  mikutter_haiku
-##    https://github.com/Akkiesoft/mikutter_haiku
+##  haiku
+##    https://github.com/Akkiesoft/haiku
 ##
 
-## mikutter_haikuはご覧のスポンサーでお送りします
+## haikuはご覧のスポンサーでお送りします
 require 'net/http'
 require 'uri'
 require 'json'
@@ -12,8 +12,8 @@ require 'time'
 
 
 ## START
-Plugin.create(:mikutter_haiku) do
-  defactivity "mikutter_haiku", "はてなハイク"
+Plugin.create(:haiku) do
+  defactivity "haiku", "はてなハイク"
 
   ########################################
   ## Writer :: 投稿処理
@@ -27,20 +27,20 @@ Plugin.create(:mikutter_haiku) do
     cant_post = 1 unless hatena_api_pass
 
     if cant_post
-      activity :mikutter_haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
+      activity :haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
     else
       begin
         Thread.new {
           res = Net::HTTP.post_form(
             URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
-            {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'mikutter_haiku'}
+            {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'haiku'}
           )
           # TODO: ホントはこういうのをやりたいけどうまく差し込めていない
           #items = [ JSON.parse(res.body) ]
           #parse(items)
         }
       rescue => ee
-        activity :mikutter_haiku, "投稿に失敗しました。\n#{ee}"
+        activity :haiku, "投稿に失敗しました。\n#{ee}"
       end
 	end
   end
@@ -61,7 +61,7 @@ Plugin.create(:mikutter_haiku) do
         items = JSON.parse(json)
       rescue => ee
         # パースに失敗した場合は例外引っ掛けてスルー
-        activity :mikutter_haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
+        activity :haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
       else
         # 最後に実行した時間を記録
         haiku_lastupdate = parse(items) if items.length
@@ -139,7 +139,7 @@ Plugin.create(:mikutter_haiku) do
 
       msgs << message
     end
-    Plugin.call(:extract_receive_message, :mikutter_haiku, messages)
+    Plugin.call(:extract_receive_message, :haiku, messages)
     return Time.parse(items[0]['created_at']).to_i
   end
 
@@ -154,7 +154,7 @@ Plugin.create(:mikutter_haiku) do
 	begin
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
 		postToHaiku(message)
-		activity :mikutter_haiku, "ハイクに投稿しました"
+		activity :haiku, "ハイクに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
 	end
   end
@@ -171,7 +171,7 @@ Plugin.create(:mikutter_haiku) do
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
 		Service.primary.update(:message => message)
 		postToHaiku(message)
-		activity :mikutter_haiku, "ハイクとTwitterに投稿しました"
+		activity :haiku, "ハイクとTwitterに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
 	end
   end
@@ -191,7 +191,7 @@ Plugin.create(:mikutter_haiku) do
   ## Reader :: データソース出力の設定
   ##
   filter_extract_datasources do |datasources|
-      datasources[:mikutter_haiku] = "はてなハイク"
+      datasources[:haiku] = "はてなハイク"
       [datasources]
   end
 
