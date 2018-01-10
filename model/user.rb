@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 module Plugin::Haiku
-  class User < Retriever::Model
-    include Retriever::Model::UserMixin
+  class User < Diva::Model
+    include Diva::Model::UserMixin
+
     field.string :name, required: true
     field.string :idname, required: true
     field.string :nickname, required: true

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 module Plugin::Haiku
-  class Entry < Retriever::Model
-    include Retriever::Model::MessageMixin
+  class Entry < Diva::Model
+    include Diva::Model::MessageMixin
 
     register :hatenahaiku_entry, name: "HatenaHaiku::Entry"
     entity_class Retriever::Entity::URLEntity
