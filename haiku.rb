@@ -11,6 +11,7 @@ require 'json'
 require 'time'
 
 require_relative 'model'
+require_relative 'api/get_user'
 
 ## START
 Plugin.create(:haiku) do
@@ -191,14 +192,15 @@ Plugin.create(:haiku) do
   # World
   world_setting(:haiku, 'はてなハイク') do
     label "ログイン情報を入力してください"
-    input "はてなID", :hatena_id
-    inputpass "APIパスワード", :hatena_api_pass
+    input "はてなID", :haiku_hatena_id
+    inputpass "APIパスワード", :haiku_api_passwd
     label "APIパスワードは以下のURLで確認できます"
     link "http://h.hatena.ne.jp/setting/devices"
     result = await_input
 
-    world = await builder.build(result)
+    world = await(Plugin::Haiku::World.build(result))
     label "このアカウントでログインしますか？"
+    link world.user_obj
     world
   end
 

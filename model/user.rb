@@ -24,6 +24,13 @@ module Plugin::Haiku
       self
     end
 
+    def icon
+      _, photos = Plugin.filtering(:photo_filter, self[:profile_image_url], [])
+      photos.first
+    rescue => err
+      Skin['notfound.png']
+    end
+
     def profile_image_url_large
       profile_image_url
     end
