@@ -12,40 +12,11 @@ require 'time'
 
 require_relative 'model'
 require_relative 'api/get_user'
+require_relative 'api/post'
 
 ## START
 Plugin.create(:haiku) do
   defactivity "haiku", "はてなハイク"
-
-  ########################################
-  ## Writer :: 投稿処理
-  ##
-  def postToHaiku(message)
-    # 設定が入ってるかチェック
-    cant_post = nil
-    hatena_id = UserConfig[:hatena_id]
-    cant_post = 1 unless hatena_id
-    hatena_api_pass = UserConfig[:hatena_api_pass]
-    cant_post = 1 unless hatena_api_pass
-
-    if cant_post
-      activity :haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
-    else
-      begin
-        Thread.new {
-          res = Net::HTTP.post_form(
-            URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
-            {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'haiku'}
-          )
-          # TODO: ホントはこういうのをやりたいけどうまく差し込めていない
-          #items = [ JSON.parse(res.body) ]
-          #parse(items)
-        }
-      rescue => ee
-        activity :haiku, "投稿に失敗しました。\n#{ee}"
-      end
-	end
-  end
 
   ########################################
   ## Reader :: リロード処理
@@ -159,10 +130,18 @@ Plugin.create(:haiku) do
   		role: :postbox) do |opt|
 	begin
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
-		postToHaiku(message)
+		postToHaiku(message, UserConfig[:hatena_id], UserConfig[:hatena_api_pass])
 		activity :haiku, "ハイクに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
 	end
+  end
+
+  defspell(:compose, :haiku,
+           condition: -> lambda{ true }
+          ) do | haiku, body: |
+    Plugin::Haiku::postToHaiku(
+      body, haiku.hatena_id, haiku.api_passwd
+    )
   end
 
   ########################################
