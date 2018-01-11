@@ -17,7 +17,7 @@ module Plugin::Haiku
     end
 
     def perma_link
-      link
+      Diva::URI.new(link)
     end
 
     def user
@@ -32,7 +32,9 @@ module Plugin::Haiku
     end
 
     def profile_image_url_large
-      profile_image_url
+      # どれがね゛え！　どれが同じアイゴン返ジデモ゛
+      # オンナジヤ、オンナジヤ思っでえ！　ウーハッフッハーン！！　ッウーン！
+      self.icon
     end
 
     def verified?

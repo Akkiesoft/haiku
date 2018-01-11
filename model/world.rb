@@ -5,21 +5,21 @@ module Plugin::Haiku
 
     register :haiku, name: "はてなハイクアカウント"
 
-    field.string :haiku_hatena_id, required: true
-    field.string :haiku_api_passwd, required: true
+    field.string :hatena_id, required: true
+    field.string :api_passwd, required: true
     field.string :slug, required: true
 
     def self.build(credential)
       world = new(
-        haiku_hatena_id: credential[:haiku_hatena_id],
-        haiku_api_passwd: credential[:haiku_api_passwd],
+        hatena_id: credential[:hatena_id],
+        api_passwd: credential[:api_passwd],
         slug: ''
       )
       Delayer::Deferred.when(
         Thread.new{
           Plugin::Haiku.get_user(
-            credential[:haiku_hatena_id],
-            credential[:haiku_api_passwd], 1
+            credential[:hatena_id],
+            credential[:api_passwd], 1
           )
         }
       ).next{|user_info|
@@ -54,8 +54,8 @@ module Plugin::Haiku
     def initialize(hash)
       super(hash)
       user_info = Plugin::Haiku.get_user(
-        hash[:haiku_hatena_id],
-        hash[:haiku_api_passwd], 1
+        hash[:hatena_id],
+        hash[:api_passwd], 1
       )
       @user = Plugin::Haiku::User.new({
         name: user_info['name'],

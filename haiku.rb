@@ -192,15 +192,15 @@ Plugin.create(:haiku) do
   # World
   world_setting(:haiku, 'はてなハイク') do
     label "ログイン情報を入力してください"
-    input "はてなID", :haiku_hatena_id
-    inputpass "APIパスワード", :haiku_api_passwd
+    input "はてなID", :hatena_id
+    inputpass "APIパスワード", :api_passwd
     label "APIパスワードは以下のURLで確認できます"
     link "http://h.hatena.ne.jp/setting/devices"
     result = await_input
 
     world = await(Plugin::Haiku::World.build(result))
     label "このアカウントでログインしますか？"
-    link world.user_obj
+    link world.user
     world
   end
 
