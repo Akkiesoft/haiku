@@ -32,8 +32,7 @@ module Plugin::Haiku
         detail: ""
       })
 
-      message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
-      message_text = "#{message_head}<#{keyword}>\n#{body}"
+      message_text = "<#{keyword}>\n#{body}"
 
       message = Plugin::Haiku::Entry.new({
         id: id,
@@ -46,17 +45,9 @@ module Plugin::Haiku
 
       # Entitiesの作成
       message.entity.add(slug: :urls,
-                         url: item['user']['url'],
-                         face: item['user']['screen_name'],
-                         range: 0...item['user']['screen_name'].size)
-      message.entity.add(slug: :urls,
-                         url: link,
-                         face: "(Permalink)",
-                         range: (item['user']['screen_name'].size+1)...(message_head.size-2))
-      message.entity.add(slug: :urls,
                          url: "http://h.hatena.ne.jp/target?word=#{keyword_url}",
                          face: "<#{keyword}>",
-                         range: (message_head.length)...(message_head.length + "<#{keyword}>".length))
+                         range: 0...("<#{keyword}>".length))
 
       # URL記法対応
       message_text.gsub(/\[(https?:\/\/[-_.!~*\'\(\)a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)\]/) do
