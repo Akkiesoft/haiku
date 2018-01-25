@@ -6,7 +6,7 @@ module Plugin::Haiku
     messages = items.each do |item|
       id		= item['id']
       keyword	= item['target']['title']
-      keyword_url = URI.encode_www_form_component(keyword)
+      keyword_url = "http://h.hatena.ne.jp/target?word=" + URI.encode_www_form_component(keyword)
       body		= item['haiku_text']
       link		= item['link']
       source	= item['source']
@@ -45,7 +45,8 @@ module Plugin::Haiku
 
       # Entitiesの作成
       message.entity.add(slug: :urls,
-                         url: "http://h.hatena.ne.jp/target?word=#{keyword_url}",
+                         open: keyword_url,
+                         url: "",
                          face: "<#{keyword}>",
                          range: 0...("<#{keyword}>".length))
 
@@ -54,6 +55,7 @@ module Plugin::Haiku
         match = Regexp.last_match
         pos = match.begin(0)
         message.entity.add(slug: :urls,
+                           open: match[1],
                            url: match[1],
                            face: match[2],
                            range: pos...(pos + match.to_s.size))
