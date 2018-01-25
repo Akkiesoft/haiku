@@ -19,7 +19,7 @@ module Plugin::Haiku
     end
 
     def perma_link
-      link
+      Diva::URI(self[:link])
     end
   end
 end

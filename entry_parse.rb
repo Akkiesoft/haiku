@@ -28,7 +28,7 @@ module Plugin::Haiku
         name: item['user']['name'],
         nickname: item['user']['screen_name'],
         profile_image_url: item['user']['profile_image_url'],
-        url: item['user']['url'],
+        link: item['user']['url'],
         detail: ""
       })
 
@@ -39,6 +39,7 @@ module Plugin::Haiku
         id: id,
         message: message_text,
         user: user,
+        link: link,
         source: source,
         created: time
       })

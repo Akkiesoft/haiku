@@ -17,7 +17,7 @@ module Plugin::Haiku
     end
 
     def perma_link
-      Diva::URI.new(link)
+      Diva::URI(self[:link])
     end
 
     def user
