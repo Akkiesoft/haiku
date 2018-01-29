@@ -2,6 +2,7 @@
 
 module Plugin::Haiku
   class User < Diva::Model
+
     include Diva::Model::UserMixin
 
     field.string :name, required: true
@@ -10,6 +11,8 @@ module Plugin::Haiku
     field.string :profile_image_url, required: true
     field.string :description
     field.string :link
+
+    alias to_s idname
 
     def id
       # :idはハイクに数値IDが存在しないのでハッシュでごまかす
@@ -44,5 +47,10 @@ module Plugin::Haiku
     def protected?
       false
     end
+
+    def inspect
+      "HaikuUser(#{@value[:idname]})"
+    end
+
   end
 end
