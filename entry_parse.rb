@@ -18,7 +18,7 @@ module Plugin::Haiku
         idname: item['user']['screen_name'],
         name: item['user']['name'],
         nickname: item['user']['screen_name'],
-        profile_image_url: item['user']['profile_image_url'],
+        profile_image_url: item['user']['profile_image_url'].split('?')[0],
         link: item['user']['url'],
         detail: ""
       })
