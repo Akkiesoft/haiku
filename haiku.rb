@@ -71,6 +71,14 @@ Plugin.create(:haiku) do
     )
   end
 
+  defspell(:compose, :haiku, :hatenahaiku_entry,
+           condition: -> (haiku, entry){ true }
+          ) do | haiku, entry, body:|
+    Plugin::Haiku::postToHaiku(
+      body, haiku.hatena_id, haiku.api_passwd, entry.id
+    )
+  end
+
   ########################################
   ##  Settings :: 設定画面
   ##
