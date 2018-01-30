@@ -14,6 +14,7 @@ require_relative 'model'
 require_relative 'entry_parse'
 require_relative 'api/get_user'
 require_relative 'api/post'
+require_relative 'api/destroy'
 
 ## START
 Plugin.create(:haiku) do
@@ -68,6 +69,22 @@ Plugin.create(:haiku) do
           ) do | haiku, body: |
     Plugin::Haiku::postToHaiku(
       body, haiku.hatena_id, haiku.api_passwd
+    )
+  end
+
+  defspell(:compose, :haiku, :hatenahaiku_entry,
+           condition: -> (haiku, entry){ true }
+          ) do | haiku, entry, body:|
+    Plugin::Haiku::postToHaiku(
+      body, haiku.hatena_id, haiku.api_passwd, 
+    )
+  end
+
+  defspell(:destroy, :haiku, :hatenahaiku_entry,
+           condition: ->(haiku, entry){ entry.from_me?(haiku) }
+          ) do |haiku, entry|
+    Plugin::Haiku::destroyEntry(
+      entry, haiku.hatena_id, haiku.api_passwd, 
     )
   end
 

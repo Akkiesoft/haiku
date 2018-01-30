@@ -21,5 +21,15 @@ module Plugin::Haiku
     def perma_link
       Diva::URI(self[:link])
     end
+
+    def from_me?(world = Enumerator.new{|y| Plugin.filtering(:worlds, y) })
+      case world
+      when Enumerable
+        world.any?(&method(:from_me?))
+      when Diva::Model
+        world.class.slug == :haiku && world.user == self.user
+      end
+    end
+
   end
 end
