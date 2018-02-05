@@ -25,7 +25,7 @@ Plugin.create(:haiku) do
 # TODO:
 # JSONごとにlastupdateを持たせるようにする
 # {["url":"<URL>", "lastupdate":"<time>"],...}みたいなのを作って管理？
-  def reload_haiku(haiku_lastupdate, mode)
+  def reload_haiku(haiku_lastupdate = nil)
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
       begin
         now = Time.now.to_i
@@ -35,16 +35,14 @@ Plugin.create(:haiku) do
 #DEBUG
 #        json = File.open("/Users/akkie/public_html/test.json").read
         items = JSON.parse(json)
+        # 最後に実行した時間を記録
+        haiku_lastupdate = Plugin::Haiku::parse(items) if not items.empty?
       rescue => ee
         # パースに失敗した場合は例外引っ掛けてスルー
         activity :haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
-      else
-        # 最後に実行した時間を記録
-        haiku_lastupdate = Plugin::Haiku::parse(items) if items.length
       end
     end
-    # mode==1だったらまた1分後にリロード
-    Reserver.new(60) { reload_haiku(haiku_lastupdate, 1) } if mode
+    Reserver.new(60) { reload_haiku(haiku_lastupdate) }
   end
 
   ########################################
@@ -101,7 +99,7 @@ Plugin.create(:haiku) do
   ########################################
   ## Reader :: スタート
   ##
-  SerialThread.new { reload_haiku(nil, 1) }
+  SerialThread.new { reload_haiku() }
 
   # World
   world_setting(:haiku, 'はてなハイク') do
