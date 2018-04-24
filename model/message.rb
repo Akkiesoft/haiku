@@ -8,14 +8,14 @@ module Plugin::Haiku
     entity_class Retriever::Entity::URLEntity
 
     field.string :id
-    field.string :message
+    field.string :description
     field.has    :user, Plugin::Haiku::User
     field.string :link
     field.string :source
     field.time   :created
 
     def to_show
-      @to_show ||= self[:message]
+      @to_show ||= self[:description]
     end
 
     def perma_link

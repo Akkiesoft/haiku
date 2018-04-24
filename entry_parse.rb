@@ -25,7 +25,7 @@ module Plugin::Haiku
 
       message = Plugin::Haiku::Entry.new({
         id: id,
-        message: body,
+        description: body,
         user: user,
         link: link,
         source: source,
