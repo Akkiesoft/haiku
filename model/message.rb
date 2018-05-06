@@ -21,5 +21,9 @@ module Plugin::Haiku
     def perma_link
       Diva::URI(self[:link])
     end
+
+    def icon
+      user.icon
+    end
   end
 end
