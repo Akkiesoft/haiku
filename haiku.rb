@@ -10,41 +10,14 @@ require 'uri'
 require 'json'
 require 'time'
 
-require_relative 'retriver'
+require_relative 'model'
+require_relative 'entry_parse'
+require_relative 'api/get_user'
+require_relative 'api/post'
 
 ## START
 Plugin.create(:haiku) do
   defactivity "haiku", "はてなハイク"
-
-  ########################################
-  ## Writer :: 投稿処理
-  ##
-  def postToHaiku(message)
-    # 設定が入ってるかチェック
-    cant_post = nil
-    hatena_id = UserConfig[:hatena_id]
-    cant_post = 1 unless hatena_id
-    hatena_api_pass = UserConfig[:hatena_api_pass]
-    cant_post = 1 unless hatena_api_pass
-
-    if cant_post
-      activity :haiku, "投稿に必要な設定がありません。設定画面でIDとパスワードを設定してください('ω`)"
-    else
-      begin
-        Thread.new {
-          res = Net::HTTP.post_form(
-            URI.parse("http://#{hatena_id}:#{hatena_api_pass}@h.hatena.ne.jp/api/statuses/update.json"),
-            {'keyword'=>"id:#{hatena_id}", 'status'=>message, 'source'=>'haiku'}
-          )
-          # TODO: ホントはこういうのをやりたいけどうまく差し込めていない
-          #items = [ JSON.parse(res.body) ]
-          #parse(items)
-        }
-      rescue => ee
-        activity :haiku, "投稿に失敗しました。\n#{ee}"
-      end
-	end
-  end
 
   ########################################
   ## Reader :: リロード処理
@@ -52,7 +25,7 @@ Plugin.create(:haiku) do
 # TODO:
 # JSONごとにlastupdateを持たせるようにする
 # {["url":"<URL>", "lastupdate":"<time>"],...}みたいなのを作って管理？
-  def reload_haiku(haiku_lastupdate, mode)
+  def reload_haiku(haiku_lastupdate = nil)
     (UserConfig[:haiku_url]|| []).select{|m|!m.empty?}.each do |url|
       begin
         now = Time.now.to_i
@@ -62,90 +35,14 @@ Plugin.create(:haiku) do
 #DEBUG
 #        json = File.open("/Users/akkie/public_html/test.json").read
         items = JSON.parse(json)
+        # 最後に実行した時間を記録
+        haiku_lastupdate = Plugin::Haiku::parse(items) if not items.empty?
       rescue => ee
         # パースに失敗した場合は例外引っ掛けてスルー
         activity :haiku, "JSONのパースに失敗しました\n#{url}?body_formats=haiku\n#{ee}"
-      else
-        # 最後に実行した時間を記録
-        haiku_lastupdate = parse(items) if items.length
       end
     end
-    # mode==1だったらまた1分後にリロード
-    Reserver.new(60) { reload_haiku(haiku_lastupdate, 1) } if mode
-  end
-
-  ########################################
-  ## Reader :: パース処理
-  ##
-  def parse(items)
-    messages = items.each do |item|
-      id		  = item['id']
-      keyword	= item['target']['title']
-      keyword_url = URI.encode_www_form_component(keyword)
-      body		= item['haiku_text']
-      link		= item['link']
-      source	= item['source']
-      time		= Time.parse(item['created_at']).localtime
-
-      # はてなフォトライフ
-      body.scan(/f:id:([-_a-zA-Z0-9]+):([0-9]{8})([0-9]{6})(j|g|p|f)?(:image|:movie)?/i) {
-        match = Regexp.last_match
-        body = body.sub(
-          "#{match.to_s}",
-          "http://f.hatena.ne.jp/#{match[1]}/#{match[2]}#{match[3]}"
-        )
-      }
-
-      user = Plugin::Haiku::User.new({
-        # :idはハイクに数値IDが存在しないのでハッシュでごまかす
-        id: "#{item['user']['id']}".hash,
-        idname: item['user']['screen_name'],
-        name: item['user']['name'],
-        nickname: item['user']['screen_name'],
-        profile_image_url: item['user']['profile_image_url'],
-        url: item['user']['url'],
-        detail: ""
-      })
-
-      message_head = "#{item['user']['screen_name']} (Permalink)\n\n"
-      message_text = "#{message_head}<#{keyword}>\n#{body}"
-
-      message = Plugin::Haiku::Entry.new({
-        id: id,
-        message: message_text,
-        user: user,
-        source: source,
-        created: time
-      })
-
-      # Entitiesの作成
-      message.entity.add(slug: :urls,
-                         url: item['user']['url'],
-                         face: item['user']['screen_name'],
-                         range: 0...item['user']['screen_name'].size)
-      message.entity.add(slug: :urls,
-                         url: link,
-                         face: "(Permalink)",
-                         range: (item['user']['screen_name'].size+1)...(message_head.size-2))
-      message.entity.add(slug: :urls,
-                         url: "http://h.hatena.ne.jp/target?word=#{keyword_url}",
-                         face: "<#{keyword}>",
-                         range: (message_head.length)...(message_head.length + "<#{keyword}>".length))
-
-      # URL記法対応
-      message_text.gsub(/\[(https?:\/\/[-_.!~*\'\(\)a-zA-Z0-9;\/?:\@&=+\$,%#]+)\:title=(.+)\]/) do
-        match = Regexp.last_match
-        pos = match.begin(0)
-        message.entity.add(slug: :urls,
-                           url: match[1],
-                           face: match[2],
-                           range: pos...(pos + match.to_s.size))
-      end
-
-    #  msgs << message
-      Plugin.call(:extract_receive_message, :haiku, [message])
-    end
-    return Time.parse(items[0]['created_at']).to_i
+    Reserver.new(60) { reload_haiku(haiku_lastupdate) }
   end
 
   ########################################
@@ -158,27 +55,26 @@ Plugin.create(:haiku) do
   		role: :postbox) do |opt|
 	begin
 		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
-		postToHaiku(message)
+		postToHaiku(message, UserConfig[:hatena_id], UserConfig[:hatena_api_pass])
 		activity :haiku, "ハイクに投稿しました"
 		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
 	end
   end
 
-  ########################################
-  ##  Writer :: ハイクとTwitterに投稿する
-  ##
-  command(:post_to_haiku_and_twitter,
-  		name: 'ハイクとTwitterに投稿する',
-  		condition: lambda{ |opt| true },
-  		visible: true,
-  		role: :postbox) do |opt|
-	begin
-		message = Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text
-		Service.primary.update(:message => message)
-		postToHaiku(message)
-		activity :haiku, "ハイクとTwitterに投稿しました"
-		Plugin.create(:gtk).widgetof(opt.widget).widget_post.buffer.text = ''
-	end
+  defspell(:compose, :haiku,
+           condition: -> lambda{ true }
+          ) do | haiku, body: |
+    Plugin::Haiku::postToHaiku(
+      body, haiku.hatena_id, haiku.api_passwd
+    )
+  end
+
+  defspell(:compose, :haiku, :hatenahaiku_entry,
+           condition: -> (haiku, entry){ true }
+          ) do | haiku, entry, body:|
+    Plugin::Haiku::postToHaiku(
+      body, haiku.hatena_id, haiku.api_passwd, entry.id
+    )
   end
 
   ########################################
@@ -203,6 +99,21 @@ Plugin.create(:haiku) do
   ########################################
   ## Reader :: スタート
   ##
-  SerialThread.new { reload_haiku(nil, 1) }
+  SerialThread.new { reload_haiku() }
+
+  # World
+  world_setting(:haiku, 'はてなハイク') do
+    label "ログイン情報を入力してください"
+    input "はてなID", :hatena_id
+    inputpass "APIパスワード", :api_passwd
+    label "APIパスワードは以下のURLで確認できます"
+    link "http://h.hatena.ne.jp/setting/devices"
+    result = await_input
+
+    world = await(Plugin::Haiku::World.build(result))
+    label "このアカウントでログインしますか？"
+    link world.user
+    world
+  end
 
 end

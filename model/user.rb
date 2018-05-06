@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 module Plugin::Haiku
-  class User < Retriever::Model
-    include Retriever::Model::UserMixin
+  class User < Diva::Model
+
+    include Diva::Model::UserMixin
+
     field.string :name, required: true
     field.string :idname, required: true
     field.string :nickname, required: true
@@ -10,21 +12,32 @@ module Plugin::Haiku
     field.string :description
     field.string :link
 
+    alias to_s idname
+
     def id
       # :idはハイクに数値IDが存在しないのでハッシュでごまかす
       self[:id].hash
     end
 
     def perma_link
-      link
+      Diva::URI(self[:link])
     end
 
     def user
       self
     end
 
+    def icon
+      _, photos = Plugin.filtering(:photo_filter, self[:profile_image_url], [])
+      photos.first
+    rescue => err
+      Skin['notfound.png']
+    end
+
     def profile_image_url_large
-      profile_image_url
+      # どれがね゛え！　どれが同じアイゴン返ジデモ゛
+      # オンナジヤ、オンナジヤ思っでえ！　ウーハッフッハーン！！　ッウーン！
+      self.icon
     end
 
     def verified?
@@ -34,27 +47,9 @@ module Plugin::Haiku
     def protected?
       false
     end
-  end
 
-  class Entry < Retriever::Model
-    include Retriever::Model::MessageMixin
-
-    register :hatenahaiku_entry, name: "HatenaHaiku::Entry"
-    entity_class Retriever::Entity::URLEntity
-
-    field.string :id
-    field.string :message
-    field.has    :user, Plugin::Haiku::User
-    field.string :link
-    field.string :source
-    field.time   :created
-
-    def to_show
-      @to_show ||= self[:message]
-    end
-
-    def perma_link
-      link
+    def inspect
+      "HaikuUser(#{@value[:idname]})"
     end
 
   end
