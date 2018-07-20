@@ -14,6 +14,7 @@ require_relative 'model'
 require_relative 'entry_parse'
 require_relative 'api/get_user'
 require_relative 'api/post'
+require_relative 'api/fav'
 
 ## START
 Plugin.create(:haiku) do
@@ -74,6 +75,14 @@ Plugin.create(:haiku) do
           ) do | haiku, entry, body:|
     Plugin::Haiku::postToHaiku(
       body, haiku.hatena_id, haiku.api_passwd, entry.id
+    )
+  end
+
+  defspell(:favorite, :haiku, :hatenahaiku_entry,
+           condition: -> (haiku, entry) { true }
+          ) do | haiku, entry |
+    Plugin::Haiku::favToHaiku(
+      haiku.hatena_id, haiku.api_passwd, entry.id
     )
   end
 
